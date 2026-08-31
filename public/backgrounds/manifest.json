@@ -1,0 +1,4 @@
+{
+  "_comment": "Map a background slot to a file in this folder. Empty means the app uses its built-in CSS atmosphere. See README.md in this folder.",
+  "plates": {}
+}

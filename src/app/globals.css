@@ -1,0 +1,365 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.cloud-shell { padding-top: 3rem; }
+.cloud-shell > div:not(.cloud-status):last-child { height: calc(100dvh - 3rem); }
+.cloud-status { position: fixed; inset: 0 0 auto; height: 3rem; z-index: 60;
+  display: flex; align-items: center; gap: .75rem; padding: 0 .75rem;
+  background: var(--ink-950); border-bottom: 1px solid var(--gold-hairline); }
+@media (max-width: 767px) {
+  .cloud-shell > div:not(.cloud-status):last-child { height: auto; min-height: calc(100dvh - 3rem); }
+  .cloud-shell header.fixed.top-0 { top: 3rem; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* Mirrored into tailwind.config.ts. Change both together.             */
+/* ------------------------------------------------------------------ */
+:root {
+  --ink-950: #03050a;
+  --ink-900: #05070b;
+  --ink-850: #070b12;
+  --ink-800: #0a0f18;
+
+  --gold: #c8a45c;
+  --gold-bright: #e6cb92;
+  --gold-dim: #8a6e3a;
+  --gold-hairline: rgba(200, 164, 92, 0.34);
+  --gold-hairline-soft: rgba(200, 164, 92, 0.16);
+
+  --teal: #5fd4ce;
+  --teal-bright: #8fe9e4;
+  --teal-dim: #2e8c88;
+  --teal-glow: rgba(95, 212, 206, 0.35);
+
+  /* Icon system. Kept separate from the panel palette so the artwork can be
+     retinted without disturbing borders, text or backgrounds. */
+  --icon-gold: #c9a24f;
+  --icon-gold-bright: #e6cb92;
+  --icon-cyan: #63d9d5;
+  --icon-cyan-bright: #8be9e5;
+  --icon-developing: #c9a24f;
+  --icon-locked: #615f58;
+
+  --ivory: #efe6d6;
+  --ivory-dim: #b6ab98;
+  --ivory-faint: #7c7466;
+
+  --panel-fill: rgba(7, 13, 20, 0.66);
+  --panel-fill-solid: rgba(6, 11, 18, 0.9);
+
+  /* Safe-area insets, resolved once so layout can reference them plainly. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Fixed chrome heights, used to pad content out from under it. */
+  --mobile-topbar-h: 3.5rem;
+  --mobile-bottomnav-h: 4rem;
+
+  /* Apple's minimum comfortable touch target. */
+  --tap-min: 2.75rem;
+
+  --dur-fast: 150ms;
+  --dur: 200ms;
+  --dur-slow: 250ms;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+* {
+  border-color: var(--gold-hairline-soft);
+}
+
+/*
+ * min-height, not height.
+ *
+ * A hard `height: 100%` on body caps it at the viewport, and combined with
+ * `overflow-x: hidden` (which forces overflow-y to `auto`) it quietly makes
+ * BODY the scroll container instead of the document. window.scrollY then
+ * never moves and scroll restoration silently does nothing.
+ */
+html,
+body {
+  min-height: 100%;
+}
+
+/*
+ * Page-level horizontal scrolling is always a bug in this layout: every wide
+ * region (trees, tables, chip rows) scrolls inside its own container instead.
+ * Applied to the root only, so the document stays the scroll container.
+ */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  max-width: 100%;
+}
+
+/*
+ * Long words wrap instead of forcing a scroll. Deliberately `break-word` and
+ * not `anywhere`: `anywhere` also collapses a box's min-content width, which
+ * makes short labels like "CASH" break one letter per line inside tight flex
+ * cells. Genuinely unbounded user input opts in via .wrap-anywhere.
+ */
+body {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/** For user-created names, which can be a single very long token. */
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+body {
+  background-color: var(--ink-950);
+  -webkit-tap-highlight-color: transparent;
+  color: var(--ivory);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 1.1875rem; /* 19px - see the fontSize scale in tailwind.config.ts */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ------------------------------------------------------------------ */
+/* Focus: always visible, never glow-only                              */
+/* ------------------------------------------------------------------ */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbars                                                          */
+/* ------------------------------------------------------------------ */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 164, 92, 0.28) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(200, 164, 92, 0.24);
+  border-radius: 999px;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(200, 164, 92, 0.42);
+}
+
+/* ------------------------------------------------------------------ */
+/* Typography helpers                                                  */
+/* ------------------------------------------------------------------ */
+.font-display {
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+}
+
+.panel-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-size: 1.375rem; /* 22px - accordion and panel headers */
+  font-weight: 600;
+}
+
+.label-caps {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 1.0625rem; /* 17px */
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ */
+/* Ornament: hairline divider with a centred diamond                   */
+/* ------------------------------------------------------------------ */
+.divider-diamond {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--gold-hairline) 20%,
+    var(--gold-hairline) 80%,
+    transparent
+  );
+}
+.divider-diamond::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: var(--gold);
+  opacity: 0.75;
+}
+
+/* ------------------------------------------------------------------ */
+/* Atmospheric background fallback (used when no plate is supplied)    */
+/* ------------------------------------------------------------------ */
+.bg-atmosphere {
+  background-color: var(--ink-950);
+  background-image:
+    radial-gradient(58% 44% at 50% 8%, rgba(28, 52, 74, 0.5) 0%, transparent 68%),
+    radial-gradient(26% 26% at 6% 66%, rgba(196, 132, 46, 0.16) 0%, transparent 70%),
+    radial-gradient(26% 26% at 94% 66%, rgba(196, 132, 46, 0.14) 0%, transparent 70%),
+    radial-gradient(90% 70% at 50% 100%, rgba(4, 8, 14, 0.96) 0%, transparent 70%),
+    linear-gradient(180deg, #060b14 0%, #04070d 55%, #03050a 100%);
+}
+
+/* Fine grain so large dark fields do not band on cheap panels. */
+.bg-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------------ */
+/* Form controls                                                       */
+/* ------------------------------------------------------------------ */
+.field {
+  width: 100%;
+  background: rgba(3, 6, 11, 0.72);
+  border: 1px solid var(--gold-hairline-soft);
+  border-radius: 2px;
+  padding: 0.6rem 0.75rem;
+  color: var(--ivory);
+  font-size: 1.125rem; /* 18px - input values */
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.field::placeholder {
+  color: var(--ivory-faint);
+}
+.field:hover {
+  border-color: var(--gold-hairline);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--teal-dim);
+  box-shadow: 0 0 0 1px var(--teal-dim), 0 0 16px -6px var(--teal-glow);
+}
+.field[aria-invalid='true'] {
+  border-color: #a4553c;
+}
+select.field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23c8a45c' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  padding-right: 1.6rem;
+}
+textarea.field {
+  resize: vertical;
+  min-height: 5.5rem;
+}
+.field-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 1rem; /* 16px - form labels */
+  color: var(--gold);
+}
+
+/* ------------------------------------------------------------------ */
+/* Motion preference                                                   */
+/* ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile helpers                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Guarantees a comfortable tap target without dictating visual size. */
+.tap-target {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+}
+
+/** Horizontal chip / card rails: scroll inside, never on the page. */
+.rail {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  /* Bleed to the screen edges so the row reads as scrollable. */
+  margin-inline: -0.875rem;
+  padding-inline: 0.875rem;
+  padding-bottom: 0.125rem;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+.rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+/** Content padding that clears the fixed mobile chrome. */
+.mobile-scroll {
+  padding-bottom: calc(var(--mobile-bottomnav-h) + var(--safe-bottom) + 1.25rem);
+}
+
+/**
+ * Sheets size themselves against the *visual* viewport where it is supported,
+ * so an open software keyboard shrinks the sheet instead of pushing its
+ * actions off screen.
+ */
+@supports (height: 100dvh) {
+  .sheet-max {
+    max-height: 92dvh;
+  }
+}
+.sheet-max {
+  max-height: 92vh;
+}
+
+/* ------------------------------------------------------------------ */
+/* Mobile: one scroller, not many                                      */
+/*                                                                     */
+/* The desktop composition fits a fixed viewport and scrolls inside     */
+/* each panel. On a phone that produces nested scroll traps, so panels  */
+/* size to their content and the page itself scrolls instead.          */
+/* ------------------------------------------------------------------ */
+@media (max-width: 767px) {
+  [data-panel] {
+    height: auto;
+  }
+
+  [data-panel-body] {
+    overflow: visible;
+    max-height: none;
+    flex: 0 0 auto;
+  }
+
+  /* Inner capped regions (the Daily Quest group, tree canvases) flow too. */
+  [data-mobile-flow] {
+    max-height: none;
+    overflow: visible;
+  }
+}

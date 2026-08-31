@@ -1,0 +1,15 @@
+# Netlify build settings for Menu.
+#
+# Netlify detects Next.js and installs its Next.js Runtime automatically, so
+# nothing needs to be declared here for routing, image handling, or the server
+# components. What is pinned is the part that silently drifts: the Node version
+# the build runs on.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next 15 needs 18.18+. Pinned to the current LTS so a change to Netlify's
+  # default image cannot break a build that works locally.
+  NODE_VERSION = "22"
