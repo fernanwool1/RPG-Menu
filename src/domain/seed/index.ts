@@ -3,6 +3,7 @@ import { splitQuestXp } from '../quests';
 import type {
   Ability,
   ActivityLog,
+  Campaign,
   DailyQuestDefinition,
   DailyTarget,
   ActivityTemplate,
@@ -18,6 +19,7 @@ import type {
   AbilityPath,
 } from '../types';
 import { buildAbilitySeed } from './abilities';
+import { buildCampaignSeed } from './campaigns';
 import { buildDailyQuestDefinitions, buildDailyTargets } from './dailyQuests';
 import { buildActivityTemplateSeed, templateId } from './activities';
 import { buildInventorySeed } from './inventory';
@@ -32,6 +34,7 @@ export interface SeedBundle {
   templates: ActivityTemplate[];
   activityLogs: ActivityLog[];
   quests: Quest[];
+  campaigns: Campaign[];
   paths: AbilityPath[];
   abilities: Ability[];
   locations: InventoryLocation[];
@@ -133,6 +136,10 @@ export function buildEmptyBundle(at: string): SeedBundle {
     templates: buildActivityTemplateSeed(at),
     activityLogs: [],
     quests: [],
+    // The NSOP campaign is a real, dated commitment rather than sample data,
+    // so it is present in an empty start too. Its ids are stable, so seeding
+    // it again over an existing save adds nothing.
+    campaigns: buildCampaignSeed(at),
     paths: abilities.paths,
     abilities: abilities.abilities.map((a) => ({ ...a, evidence: [] })),
     locations: inventory.locations,
@@ -256,6 +263,7 @@ export function buildSampleBundle(at: string): SeedBundle {
     templates,
     activityLogs,
     quests,
+    campaigns: buildCampaignSeed(at),
     paths: abilitySeed.paths,
     abilities: abilitySeed.abilities,
     locations: inventory.locations,
@@ -270,6 +278,7 @@ export function buildSampleBundle(at: string): SeedBundle {
 export {
   buildAbilitySeed,
   buildActivityTemplateSeed,
+  buildCampaignSeed,
   buildDailyQuestDefinitions,
   buildDailyTargets,
   buildInventorySeed,

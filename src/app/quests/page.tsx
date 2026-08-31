@@ -6,6 +6,8 @@ import { Check, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { DailyProgressSummary } from '@/components/daily/DailyProgressSummary';
 import { DailyQuestGroup } from '@/components/daily/DailyQuestGroup';
 import { ResponsiveStage } from '@/components/layout/ResponsiveStage';
+import { CampaignPanel } from '@/components/quests/CampaignPanel';
+import { MainCampaignGroup } from '@/components/quests/MainCampaignGroup';
 import { QuestEditor } from '@/components/quests/QuestEditor';
 import {
   ActiveFilterChips,
@@ -53,6 +55,7 @@ const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
 
 export default function QuestsPage() {
   const quests = useAppStore((s) => s.quests);
+  const campaigns = useAppStore((s) => s.campaigns);
   const toggleObjective = useAppStore((s) => s.toggleObjective);
   const moveObjective = useAppStore((s) => s.moveObjective);
   const completeQuest = useAppStore((s) => s.completeQuest);
@@ -72,6 +75,9 @@ export default function QuestsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<Id | null>(null);
+  /* A campaign is not a quest, so it gets its own selection. Choosing either
+     one clears the other; the detail pane shows whichever is current. */
+  const [selectedCampaignId, setSelectedCampaignId] = useState<Id | null>(null);
   const [paneIndex, setPaneIndex] = useState(1);
 
   const [editing, setEditing] = useState<{ open: boolean; questId: Id | null }>({
@@ -118,8 +124,15 @@ export default function QuestsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quests, statusFilter, typeFilter, categoryFilter, search]);
 
+  const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? null;
   const selected = quests.find((q) => q.id === selectedId) ?? filtered[0] ?? null;
   const progress = selected ? questProgress(selected) : null;
+
+  const selectQuest = (id: Id) => {
+    setSelectedCampaignId(null);
+    setSelectedId(id);
+    setPaneIndex(1);
+  };
 
   /* ---------------- right-hand summary data ---------------- */
 
@@ -163,7 +176,30 @@ export default function QuestsPage() {
         </>
       )}
 
-      <DailyQuestGroup today={todayKey} countdown={countdown} />
+      {/*
+       * The two standing groups share one capped scroll region.
+       *
+       * Either one, expanded, is taller than the panel on a laptop; without
+       * the cap they push the search, the filters and the quest board out of
+       * the bottom of the panel entirely. The cap applies only from tablet up,
+       * because the mobile shell scrolls the document and must not grow a
+       * second scroller inside it.
+       *
+       * The quest list below carries a matching `md:min-h` floor, so expanding
+       * a group squeezes this region rather than collapsing the board to
+       * nothing.
+       */}
+      <div className="scroll-thin min-h-0 space-y-2.5 max-md:shrink-0 md:max-h-[min(44rem,62vh)] md:overflow-y-auto md:pr-1">
+        <DailyQuestGroup today={todayKey} countdown={countdown} />
+
+        <MainCampaignGroup
+          selectedId={selectedCampaignId}
+          onSelect={(id) => {
+            setSelectedCampaignId(id);
+            setPaneIndex(1);
+          }}
+        />
+      </div>
 
       <div className="divider-diamond my-3 shrink-0" />
 
@@ -271,9 +307,9 @@ export default function QuestsPage() {
           }
         />
       ) : (
-        <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-thin pr-0.5">
+        <ul className="min-h-0 flex-1 space-y-1.5 overflow-y-auto scroll-thin pr-0.5 md:min-h-[7rem]">
           {filtered.map((quest) => {
-            const isSelected = quest.id === selected?.id;
+            const isSelected = selectedCampaign === null && quest.id === selected?.id;
             const p = questProgress(quest);
             const due = deadlineState(quest);
 
@@ -281,10 +317,7 @@ export default function QuestsPage() {
               <li key={quest.id}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedId(quest.id);
-                    setPaneIndex(1);
-                  }}
+                  onClick={() => selectQuest(quest.id)}
                   aria-current={isSelected ? 'true' : undefined}
                   className={cn(
                     'relative w-full rounded-[2px] border px-2.5 py-2 text-left transition-colors duration-200',
@@ -349,7 +382,11 @@ export default function QuestsPage() {
 
   const detailPanel = (
     <GamePanel className="h-full" bodyClassName="flex min-h-0 flex-1 flex-col p-4">
-      {!selected || !progress ? (
+      {selectedCampaign ? (
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-thin pr-1">
+          <CampaignPanel campaign={selectedCampaign} />
+        </div>
+      ) : !selected || !progress ? (
         <EmptyState
           icon="map"
           title="No quest selected"
@@ -703,10 +740,7 @@ export default function QuestsPage() {
                 <li key={quest.id}>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedId(quest.id);
-                      setPaneIndex(1);
-                    }}
+                    onClick={() => selectQuest(quest.id)}
                     className="w-full rounded-[2px] border border-gold/20 px-2.5 py-1.5 text-left transition-colors duration-200 hover:border-gold/50 hover:bg-gold/[0.04]"
                   >
                     <span className="block truncate text-sm text-ivory">{quest.title}</span>
@@ -753,7 +787,12 @@ export default function QuestsPage() {
         onActiveIndexChange={setPaneIndex}
         panes={[
           { id: 'list', label: 'Quest Log', node: listPanel, className: 'w-[29rem] shrink-0' },
-          { id: 'detail', label: selected?.title ?? 'Detail', node: detailPanel, className: 'flex-1' },
+          {
+            id: 'detail',
+            label: selectedCampaign?.title ?? selected?.title ?? 'Detail',
+            node: detailPanel,
+            className: 'flex-1',
+          },
           { id: 'today', label: 'Today', node: summaryPanel, className: 'w-[22rem] shrink-0' },
         ]}
       />

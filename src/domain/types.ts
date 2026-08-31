@@ -62,7 +62,9 @@ export type XpSourceType =
   /** A rotating Daily Quest completion. */
   | 'daily-quest'
   /** The delta written when a Daily Check entry is corrected. */
-  | 'correction';
+  | 'correction'
+  /** A single mission inside a Main Quest campaign. */
+  | 'campaign-mission';
 
 /**
  * The single source of truth for all progression.
@@ -542,4 +544,80 @@ export interface DailyQuestHistory {
   completedDefinitionIds: Id[];
   expiredDefinitionIds: Id[];
   xpEarned: number;
+}
+
+/* ------------------------------------------------------------------ */
+/* Campaigns                                                           */
+/*                                                                     */
+/* A campaign is a Main Quest made of ordered missions grouped into    */
+/* chapters. It is deliberately NOT a Quest: quests complete in one    */
+/* step and pay one XP total, while a campaign pays per mission and    */
+/* gates each mission on the one before it. Keeping the two apart      */
+/* leaves quest XP, objectives and completion rules exactly as they    */
+/* were.                                                               */
+/* ------------------------------------------------------------------ */
+
+export type MissionStatus =
+  /** Gated behind an earlier mission. No actions are offered. */
+  | 'locked'
+  /** Unlocked and ready to begin. */
+  | 'available'
+  /** The user has started it but not finished it. */
+  | 'in-progress'
+  /** Finished, and its XP is in the ledger. Terminal unless retried. */
+  | 'completed'
+  /** Missed. Awards nothing, removes nothing, and can be retried. */
+  | 'failed';
+
+export type CampaignStatus = 'active' | 'completed';
+
+export interface CampaignMission {
+  id: Id;
+  /** 1-based position across the WHOLE campaign, not within its chapter. */
+  order: number;
+  title: string;
+  description: string;
+  /** Local calendar day the session is scheduled for (YYYY-MM-DD). */
+  date: DayKey;
+  /** Wall-clock strings as printed on the schedule, e.g. "6:30 AM". */
+  startTime: string;
+  endTime: string;
+  location: string;
+  /**
+   * The schedule listed a room that still has to be confirmed with a Crew
+   * Captain. Surfaced as a warning rather than silently trusted.
+   */
+  locationUnconfirmed?: boolean;
+  /** Character XP paid once, on completion. */
+  xp: number;
+  status: MissionStatus;
+  startedAt: IsoDate | null;
+  completedAt: IsoDate | null;
+  failedAt: IsoDate | null;
+  /** Set the moment XP is paid, so a retry can never pay twice. */
+  xpAwardedAt: IsoDate | null;
+  /** The user's own notes. Never cleared by completing or retrying. */
+  notes: string;
+}
+
+export interface CampaignChapter {
+  id: Id;
+  order: number;
+  title: string;
+  description: string;
+  missions: CampaignMission[];
+}
+
+export interface Campaign extends BaseRecord {
+  title: string;
+  description: string;
+  /** Always 'main' today; kept explicit so the card can label itself. */
+  type: QuestType;
+  category: string;
+  status: CampaignStatus;
+  /** First and last scheduled day, as calendar keys. */
+  startDate: DayKey;
+  endDate: DayKey;
+  chapters: CampaignChapter[];
+  completedAt: IsoDate | null;
 }

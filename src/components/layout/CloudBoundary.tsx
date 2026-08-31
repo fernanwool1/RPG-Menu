@@ -9,7 +9,9 @@ import { SyncEngine, type SyncStatus } from '@/cloud/engine';
 import { snapshotSchema, type CloudSnapshot } from '@/cloud/schema';
 import { emptyCloudSnapshot, legacySnapshot } from '@/cloud/snapshot';
 import { useAppStore } from '@/store/useAppStore';
-import { readRawSnapshot } from '@/store/persistence';
+import { readRawSnapshot, SCHEMA_VERSION } from '@/store/persistence';
+import { ensureCampaigns } from '@/domain/seed/campaigns';
+import { nowIso } from '@/domain/ids';
 import { GameButton } from '@/components/ui/GameButton';
 import { AuthError, AuthShell, AuthStatus } from '@/components/auth/AuthShell';
 import { SignInFlow } from '@/components/auth/SignInFlow';
@@ -109,7 +111,12 @@ function ConnectedAccount({ user, children }: { user: User; children: ReactNode 
     const engine = new SyncEngine(cloudTransport(user.id), (snapshot) => {
       applying = true;
       const value = snapshot ?? emptyCloudSnapshot();
-      useAppStore.setState({ ...value.data, initialized: value.initialized,
+      useAppStore.setState({ ...value.data,
+        // Same top-up the local `merge` does: a cloud save from before a
+        // campaign existed gains it, one that already has it keeps its
+        // progress untouched.
+        campaigns: ensureCampaigns(value.data.campaigns, nowIso()),
+        initialized: value.initialized,
         hiddenFinancials: { cash: true, bank: true, total: true } });
       applying = false;
       setHasSave(snapshot !== null);
@@ -123,7 +130,7 @@ function ConnectedAccount({ user, children }: { user: User; children: ReactNode 
     const unsubscribe = useAppStore.subscribe((state) => {
       if (applying) return;
       try {
-        engine.changed(snapshotSchema.parse({ schemaVersion: 2, initialized: state.initialized, data: state }));
+        engine.changed(snapshotSchema.parse({ schemaVersion: SCHEMA_VERSION, initialized: state.initialized, data: state }));
       } catch {
         setCloudWritable(false);
         engine.rejectInvalidChange();

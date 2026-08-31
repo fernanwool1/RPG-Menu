@@ -11,9 +11,11 @@ import { newId, nowIso } from '@/domain/ids';
 import { splitQuestXp } from '@/domain/quests';
 import { buildEmptyBundle, buildSampleBundle, type SeedBundle } from '@/domain/seed';
 import { buildDailyQuestDefinitions, buildDailyTargets } from '@/domain/seed/dailyQuests';
+import { ensureCampaigns } from '@/domain/seed/campaigns';
 import type {
   Ability,
   AbilityEvidence,
+  Campaign,
   DailyCheck,
   DailyQuestDefinition,
   DailyQuestHistory,
@@ -37,6 +39,7 @@ import type {
   AbilityPath,
 } from '@/domain/types';
 
+import * as campaign from './campaignActions';
 import * as daily from './dailyActions';
 import type { AddEntryInput, DailyContext, DailySlice } from './dailyActions';
 import {
@@ -58,6 +61,8 @@ export interface AppData {
   templates: ActivityTemplate[];
   activityLogs: ActivityLog[];
   quests: Quest[];
+  /* Main Quest campaigns: ordered missions grouped into chapters. */
+  campaigns: Campaign[];
   paths: AbilityPath[];
   abilities: Ability[];
   locations: InventoryLocation[];
@@ -103,6 +108,13 @@ export interface AppState extends AppData {
   completeQuest: (id: Id) => void;
   failQuest: (id: Id) => void;
   reopenQuest: (id: Id) => void;
+
+  /* campaigns */
+  startMission: (campaignId: Id, missionId: Id) => { ok: true } | { ok: false; error: string };
+  completeMission: (campaignId: Id, missionId: Id) => { ok: true } | { ok: false; error: string };
+  failMission: (campaignId: Id, missionId: Id) => { ok: true } | { ok: false; error: string };
+  retryMission: (campaignId: Id, missionId: Id) => { ok: true } | { ok: false; error: string };
+  setMissionNotes: (campaignId: Id, missionId: Id, notes: string) => void;
 
   /* skills */
   addDomain: (input: { name: string; icon: string }) => Id;
@@ -189,6 +201,7 @@ function bundleToData(bundle: SeedBundle): AppData {
     templates: bundle.templates,
     activityLogs: bundle.activityLogs,
     quests: bundle.quests,
+    campaigns: bundle.campaigns,
     paths: bundle.paths,
     abilities: bundle.abilities,
     locations: bundle.locations,
@@ -203,6 +216,32 @@ function bundleToData(bundle: SeedBundle): AppData {
     dailyHistory: [],
     dailyActiveDate: null,
   };
+}
+
+/** Reads the campaign slice out of the full state, for the pure reducers. */
+function campaignSliceOf(s: AppState): campaign.CampaignSlice {
+  return { campaigns: s.campaigns, transactions: s.transactions };
+}
+
+/**
+ * Runs one mission reducer and reports the outcome, so the UI can explain a
+ * refused transition instead of silently doing nothing.
+ */
+function runMission(
+  set: (patch: Partial<AppState>) => void,
+  get: () => AppState,
+  reducer: (
+    slice: campaign.CampaignSlice,
+    campaignId: Id,
+    missionId: Id,
+  ) => campaign.CampaignResult,
+  campaignId: Id,
+  missionId: Id,
+): { ok: true } | { ok: false; error: string } {
+  const result = reducer(campaignSliceOf(get()), campaignId, missionId);
+  if ('error' in result) return { ok: false, error: result.error };
+  set(applied(result));
+  return { ok: true };
 }
 
 /** Reads the daily slice out of the full state, for the pure reducers. */
@@ -318,6 +357,7 @@ export const useAppStore = create<AppState>()(
             templates: s.templates,
             activityLogs: s.activityLogs,
             quests: s.quests,
+            campaigns: s.campaigns,
             paths: s.paths,
             abilities: s.abilities,
             locations: s.locations,
@@ -589,6 +629,24 @@ export const useAppStore = create<AppState>()(
               : q,
           ),
         })),
+
+      /* ---------------- campaigns ---------------- */
+      /*
+       * Every mission transition goes through the pure reducers in
+       * campaignActions, which own the two rules that matter: a mission pays
+       * XP at most once, and the next mission opens only because this one was
+       * completed. The store just applies the result.
+       */
+
+      startMission: (campaignId, missionId) => runMission(set, get, campaign.startMission, campaignId, missionId),
+      completeMission: (campaignId, missionId) => runMission(set, get, campaign.completeMission, campaignId, missionId),
+      failMission: (campaignId, missionId) => runMission(set, get, campaign.failMission, campaignId, missionId),
+      retryMission: (campaignId, missionId) => runMission(set, get, campaign.retryMission, campaignId, missionId),
+
+      setMissionNotes: (campaignId, missionId, notes) =>
+        set((s) =>
+          applied(campaign.setMissionNotes(campaignSliceOf(s), campaignId, missionId, notes)),
+        ),
 
       /* ---------------- skills ---------------- */
 
@@ -1125,6 +1183,10 @@ export const useAppStore = create<AppState>()(
             savedDefinitions.length === 0
               ? seededDefinitions
               : [...savedDefinitions, ...missing],
+          // Keyed on the campaign's stable id: an existing save keeps its exact
+          // mission progress, and a save from before this release picks the
+          // campaign up without a duplicate ever being created.
+          campaigns: ensureCampaigns(saved.campaigns, at),
           dailyTargets: saved.dailyTargets ?? buildDailyTargets(),
           dailyInstances: saved.dailyInstances ?? [],
           dailySelections: saved.dailySelections ?? [],
@@ -1144,6 +1206,7 @@ export const useAppStore = create<AppState>()(
         templates: s.templates,
         activityLogs: s.activityLogs,
         quests: s.quests,
+        campaigns: s.campaigns,
         paths: s.paths,
         abilities: s.abilities,
         locations: s.locations,

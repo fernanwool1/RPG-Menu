@@ -92,12 +92,25 @@ const config: Config = {
           '0%, 100%': { opacity: '0.55' },
           '50%': { opacity: '1' },
         },
+        /* The connector between two missions filling in after a completion. */
+        'trail-fill': {
+          from: { transform: 'scaleY(0)' },
+          to: { transform: 'scaleY(1)' },
+        },
+        /* The mission that just unlocked, catching the eye once. */
+        'unlock-glow': {
+          '0%': { boxShadow: '0 0 0 0 var(--teal-glow)' },
+          '55%': { boxShadow: '0 0 18px 3px var(--teal-glow)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(0, 0, 0, 0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 200ms ease-out both',
         'rise-in': 'rise-in 220ms ease-out both',
         'scale-in': 'scale-in 180ms ease-out both',
         'pulse-soft': 'pulse-soft 2.8s ease-in-out infinite',
+        'trail-fill': 'trail-fill 520ms ease-out both',
+        'unlock-glow': 'unlock-glow 1100ms ease-out both',
       },
     },
   },

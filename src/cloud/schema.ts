@@ -10,6 +10,12 @@ const day = str.regex(/^\d{4}-\d{2}-\d{2}$/);
 const base = { id, createdAt: date, updatedAt: date };
 const named = { ...base, name: str, icon: str, order: num };
 const dailyStatus = z.enum(['not-started', 'in-progress', 'completed', 'expired']);
+const questType = z.enum(['side', 'standard', 'main', 'boss', 'legendary', 'daily', 'weekly']);
+const mission = z.object({ id, order: num, title: str, description: str, date: day, startTime: str,
+  endTime: str, location: str, locationUnconfirmed: bool.optional(), xp: nonneg,
+  status: z.enum(['locked', 'available', 'in-progress', 'completed', 'failed']),
+  startedAt: date.nullable(), completedAt: date.nullable(), failedAt: date.nullable(),
+  xpAwardedAt: date.nullable(), notes: str });
 const entry = z.object({ id, dailyCheckId: id, activity: z.enum(['reading', 'calories', 'instrument']),
   amount: nonneg, xpAwarded: nonneg, skillNodeId: id, instrumentName: str.optional(), occurredAt: date,
   correctsEntryId: id.optional(), correctedByEntryId: id.optional(), note: str.optional() });
@@ -36,7 +42,7 @@ export const appDataSchema = z.object({
   activityLogs: z.array(z.object({ ...base, templateId: id, skillNodeId: id, amount: nonneg,
     xpAwarded: nonneg, occurredAt: date, note: str.optional(), reversedAt: date.nullable() })),
   quests: z.array(z.object({ ...base, title: str, description: str,
-    type: z.enum(['side', 'standard', 'main', 'boss', 'legendary', 'daily', 'weekly']), category: str,
+    type: questType, category: str,
     status: z.enum(['planned', 'active', 'completed', 'failed', 'archived']),
     objectives: z.array(z.object({ id, label: str, done: bool, order: num })),
     skillAllocations: z.array(z.object({ skillNodeId: id, xp: nonneg })), deadline: date.nullable(),
@@ -46,6 +52,10 @@ export const appDataSchema = z.object({
       label: str, itemCategory: str.optional(), itemLocationId: id.optional(), itemEstimatedValue: nonneg.optional() })),
     notes: str.optional(), attachments: z.array(z.object({ id, label: str, url: str })),
     completedAt: date.nullable(), failedAt: date.nullable(), xpAwardedAt: date.nullable(), abilityId: id.nullable() })),
+  campaigns: z.array(z.object({ ...base, title: str, description: str, type: questType, category: str,
+    status: z.enum(['active', 'completed']), startDate: day, endDate: day,
+    chapters: z.array(z.object({ id, order: num, title: str, description: str,
+      missions: z.array(mission) })), completedAt: date.nullable() })).default([]),
   paths: z.array(z.object(named)),
   abilities: z.array(z.object({ ...named, pathId: id, description: str,
     requirements: z.array(z.object({ id, target: z.enum(['node', 'branch', 'domain']), targetId: id,
@@ -60,7 +70,7 @@ export const appDataSchema = z.object({
     image: str.nullable(), sensitiveIdentifier: str.optional(), archived: bool })),
   finances: z.object({ cash: num, bank: num, currency: str.length(3), updatedAt: date }),
   transactions: z.array(z.object({ id, createdAt: date,
-    sourceType: z.enum(['quest', 'activity', 'manual', 'reversal', 'seed', 'daily-check', 'daily-quest', 'correction']),
+    sourceType: z.enum(['quest', 'activity', 'manual', 'reversal', 'seed', 'daily-check', 'daily-quest', 'correction', 'campaign-mission']),
     sourceId: id.nullable(), skillNodeId: id.nullable(), amount: num, note: str.optional(), reversesTxId: id.optional() })),
   dailyDefinitions: z.array(z.object({ ...named, description: str,
     category: z.enum(['academic', 'technical', 'business', 'music', 'physical', 'personal-care', 'organization', 'financial', 'social']),
@@ -90,5 +100,5 @@ export const appDataSchema = z.object({
   }
 });
 
-export const snapshotSchema = z.object({ schemaVersion: z.literal(2), initialized: bool, data: appDataSchema });
+export const snapshotSchema = z.object({ schemaVersion: z.literal(3), initialized: bool, data: appDataSchema });
 export type CloudSnapshot = z.infer<typeof snapshotSchema>;

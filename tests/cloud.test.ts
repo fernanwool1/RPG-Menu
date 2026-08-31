@@ -56,7 +56,7 @@ describe('cloud boundary validation', () => {
     const data = JSON.parse(useAppStore.getState().exportData()).data;
     data.transactions.push(data.transactions[0]);
     expect(appDataSchema.safeParse(data).success).toBe(false);
-    expect(snapshotSchema.safeParse({ ...emptyCloudSnapshot(), schemaVersion: 3 }).success).toBe(false);
+    expect(snapshotSchema.safeParse({ ...emptyCloudSnapshot(), schemaVersion: 4 }).success).toBe(false);
   });
   it('converts a legacy save without mutating its source', () => {
     const data = JSON.parse(useAppStore.getState().exportData()).data;

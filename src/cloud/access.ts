@@ -9,7 +9,8 @@ export function canWrite() {
 /** Gate actions, not just buttons: timers and already-open forms must obey offline mode too. */
 export function guardActions<T extends object>(state: T): T {
   const resultActions = new Set(['importData', 'logActivity', 'replaceDailyQuest',
-    'addDailyCheckEntry', 'correctDailyCheckEntry', 'completeDailyCheck', 'setDailyQuestPinned']);
+    'addDailyCheckEntry', 'correctDailyCheckEntry', 'completeDailyCheck', 'setDailyQuestPinned',
+    'startMission', 'completeMission', 'failMission', 'retryMission']);
   return Object.fromEntries(Object.entries(state).map(([key, value]) => [key,
     typeof value !== 'function' || key === 'exportData' ? value : (...args: unknown[]) => {
       if (canWrite()) return value(...args);

@@ -22,8 +22,10 @@ export const STORAGE_KEY = 'rpg-menu-state';
  *   2  Daily Quest system: daily definitions, instances, selections, checks,
  *      targets and history; the Music "Performance" branch and its extra
  *      instrument nodes
+ *   3  Main Quest campaigns: ordered missions grouped into chapters, with
+ *      per-mission status, notes and one-time XP
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface PersistenceAdapter extends StateStorage {
   getItem: (name: string) => string | null | Promise<string | null>;
@@ -164,8 +166,8 @@ export function createMemoryAdapter(): PersistenceAdapter {
 type Migration = (state: unknown) => unknown;
 
 /**
- * Keyed by the version being migrated FROM. To add version 3, write
- * MIGRATIONS[2] and bump SCHEMA_VERSION.
+ * Keyed by the version being migrated FROM. To add version 4, write
+ * MIGRATIONS[3] and bump SCHEMA_VERSION.
  */
 const MIGRATIONS: Record<number, Migration> = {
   /**
@@ -228,6 +230,20 @@ const MIGRATIONS: Record<number, Migration> = {
       dailyHistory: s.dailyHistory ?? [],
       dailyActiveDate: s.dailyActiveDate ?? null,
     };
+  },
+
+  /**
+   * 2 -> 3: introduce Main Quest campaigns.
+   *
+   * Purely additive, and deliberately empty: the campaign itself is seeded on
+   * load by the store's `merge`, keyed on its stable id. Doing it there rather
+   * than here means a save that already holds the campaign keeps its exact
+   * mission progress, while a save that predates it picks the campaign up
+   * without a second copy ever being created.
+   */
+  2: (state) => {
+    const s = (state ?? {}) as Record<string, unknown>;
+    return { ...s, campaigns: s.campaigns ?? [] };
   },
 };
 
